@@ -4,8 +4,17 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import NavBar from '@/components/NavBar'
 import type { GroceryItem } from '@/lib/types'
+import { RefreshCw } from 'lucide-react'
 
 const CATEGORY_ORDER = ['Proteins', 'Carbs', 'Vegetables', 'Fats', 'Flavor / Sauces']
+
+const CATEGORY_CONFIG: Record<string, { emoji: string; color: string; bg: string }> = {
+  'Proteins': { emoji: '🥩', color: 'text-red-600', bg: 'bg-red-50' },
+  'Carbs': { emoji: '🌾', color: 'text-amber-600', bg: 'bg-amber-50' },
+  'Vegetables': { emoji: '🥦', color: 'text-green-600', bg: 'bg-green-50' },
+  'Fats': { emoji: '🥑', color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  'Flavor / Sauces': { emoji: '🧄', color: 'text-purple-600', bg: 'bg-purple-50' },
+}
 
 export default function GroceryPage() {
   const [items, setItems] = useState<GroceryItem[]>([])
@@ -65,11 +74,12 @@ export default function GroceryPage() {
   }, {} as Record<string, GroceryItem[]>)
 
   const checkedCount = items.filter(i => i.checked).length
+  const pct = items.length ? Math.round((checkedCount / items.length) * 100) : 0
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-10 h-10 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -77,54 +87,93 @@ export default function GroceryPage() {
   return (
     <>
       <NavBar />
-      <main className="md:ml-56 pb-24 md:pb-8 px-4 pt-4 max-w-2xl md:mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Grocery List</h1>
-            <p className="text-sm text-gray-400">{checkedCount} of {items.length} items checked</p>
+      <main className="md:ml-60 pb-28 md:pb-10 min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-[#0d2318] px-5 pt-5 pb-6">
+          <p className="text-green-400 text-xs font-semibold uppercase tracking-widest mb-1">Weekly Shop</p>
+          <div className="flex items-end justify-between mb-4">
+            <h1 className="text-white font-bold text-xl">Grocery List</h1>
+            {checkedCount > 0 && (
+              <button onClick={resetAll} className="flex items-center gap-1.5 text-green-300 hover:text-white text-xs font-medium transition-colors">
+                <RefreshCw size={13} />
+                Reset
+              </button>
+            )}
           </div>
-          {checkedCount > 0 && (
-            <button onClick={resetAll} className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5">
-              Reset all
-            </button>
-          )}
+
+          {/* Progress */}
+          <div className="bg-white/8 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-white text-sm font-semibold">{checkedCount} of {items.length} items</span>
+              <span className="text-green-400 font-bold text-sm">{pct}%</span>
+            </div>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-400 rounded-full transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            {pct === 100 && (
+              <p className="text-green-300 text-xs mt-2 font-medium">All done! You're ready to cook. 🎉</p>
+            )}
+          </div>
         </div>
 
-        {items.length === 0 ? (
-          <div className="text-center text-gray-400 py-16">
-            <p className="text-4xl mb-3">🛒</p>
-            <p className="font-semibold text-gray-600">No grocery list yet</p>
-            <p className="text-sm mt-1">Your coach will set this up soon.</p>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {Object.entries(grouped).map(([category, catItems]) => (
-              <div key={category}>
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{category}</h2>
-                <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
-                  {catItems.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => toggleItem(item)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors first:rounded-t-xl last:rounded-b-xl"
-                    >
-                      <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                        item.checked ? 'bg-green-600 border-green-600' : 'border-gray-300'
-                      }`}>
-                        {item.checked && <span className="text-white text-xs">✓</span>}
-                      </div>
-                      <span className={`text-sm font-medium transition-colors ${
-                        item.checked ? 'line-through text-gray-300' : 'text-gray-700'
-                      }`}>
-                        {item.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+        <div className="px-4 pt-5">
+          {items.length === 0 ? (
+            <div className="bg-white rounded-2xl p-10 text-center border border-gray-100 shadow-sm">
+              <div className="w-16 h-16 bg-green-100 rounded-3xl flex items-center justify-center mx-auto mb-3">
+                <span className="text-3xl">🛒</span>
               </div>
-            ))}
-          </div>
-        )}
+              <p className="font-bold text-gray-800">No grocery list yet</p>
+              <p className="text-sm text-gray-400 mt-1">Your coach will set this up soon.</p>
+            </div>
+          ) : (
+            <div className="space-y-4 animate-fadeIn">
+              {Object.entries(grouped).map(([category, catItems]) => {
+                const config = CATEGORY_CONFIG[category] || { emoji: '📦', color: 'text-gray-600', bg: 'bg-gray-50' }
+                const catChecked = catItems.filter(i => i.checked).length
+                return (
+                  <div key={category}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-7 h-7 ${config.bg} rounded-lg flex items-center justify-center text-base`}>
+                        {config.emoji}
+                      </div>
+                      <h2 className={`text-sm font-bold ${config.color}`}>{category}</h2>
+                      <span className="text-xs text-gray-400 ml-auto">{catChecked}/{catItems.length}</span>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                      {catItems.map((item, idx) => (
+                        <button
+                          key={item.id}
+                          onClick={() => toggleItem(item)}
+                          className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 ${
+                            idx < catItems.length - 1 ? 'border-b border-gray-50' : ''
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                            item.checked ? 'bg-green-600 border-green-600' : 'border-gray-200'
+                          }`}>
+                            {item.checked && (
+                              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </div>
+                          <span className={`text-sm font-medium transition-all ${
+                            item.checked ? 'line-through text-gray-300' : 'text-gray-800'
+                          }`}>
+                            {item.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </main>
     </>
   )

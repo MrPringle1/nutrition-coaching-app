@@ -4,8 +4,33 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import NavBar from '@/components/NavBar'
 import type { Meal, MealPlan } from '@/lib/types'
+import { Flame, Beef, Wheat, Droplets } from 'lucide-react'
 
-const DAYS = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7']
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+const MEAL_COLORS: Record<string, string> = {
+  Breakfast: 'bg-amber-100 text-amber-700',
+  Lunch: 'bg-blue-100 text-blue-700',
+  Dinner: 'bg-purple-100 text-purple-700',
+  Snack: 'bg-green-100 text-green-700',
+}
+
+function MacroRing({ pct, color, size = 52 }: { pct: number; color: string; size?: number }) {
+  const r = (size - 8) / 2
+  const circ = 2 * Math.PI * r
+  const dash = (Math.min(pct, 100) / 100) * circ
+  return (
+    <svg width={size} height={size} className="rotate-[-90deg]">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="4" />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={color} strokeWidth="4"
+        strokeDasharray={`${dash} ${circ}`}
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
 
 export default function PlanPage() {
   const [plan, setPlan] = useState<MealPlan | null>(null)
@@ -57,8 +82,11 @@ export default function PlanPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-400 font-medium">Loading your plan…</p>
+        </div>
       </div>
     )
   }
@@ -67,88 +95,142 @@ export default function PlanPage() {
     return (
       <>
         <NavBar />
-        <main className="md:ml-56 pb-20 md:pb-0 p-6 flex items-center justify-center min-h-screen">
-          <div className="text-center text-gray-500">
-            <p className="text-4xl mb-3">🥗</p>
-            <p className="font-semibold text-gray-700">No plan yet</p>
-            <p className="text-sm mt-1">Your coach will assign your meal plan soon.</p>
+        <main className="md:ml-60 pb-24 md:pb-8 flex items-center justify-center min-h-screen bg-gray-50">
+          <div className="text-center p-8">
+            <div className="w-20 h-20 bg-green-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
+              <span className="text-4xl">🥗</span>
+            </div>
+            <p className="font-bold text-gray-800 text-lg">No plan yet</p>
+            <p className="text-sm text-gray-400 mt-1">Your coach will assign your meal plan soon.</p>
           </div>
         </main>
       </>
     )
   }
 
+  const calPct = plan.daily_calories ? (totalCals / plan.daily_calories) * 100 : 0
+  const proteinPct = plan.daily_protein ? (totalProtein / plan.daily_protein) * 100 : 0
+  const carbsPct = plan.daily_carbs ? (totalCarbs / plan.daily_carbs) * 100 : 0
+  const fatPct = plan.daily_fat ? (totalFat / plan.daily_fat) * 100 : 0
+
   return (
     <>
       <NavBar />
-      <main className="md:ml-56 pb-24 md:pb-8 px-4 pt-4 max-w-2xl md:mx-auto">
-        {/* Macro summary */}
-        <div className="bg-green-600 rounded-2xl p-4 text-white mb-4">
-          <p className="text-sm font-medium opacity-80 mb-1">{plan.name}</p>
-          <p className="text-xs opacity-70 mb-3">Daily targets</p>
-          <div className="grid grid-cols-4 gap-2">
+      <main className="md:ml-60 pb-28 md:pb-10 min-h-screen bg-gray-50">
+        {/* Hero header */}
+        <div className="bg-[#0d2318] px-5 pt-5 pb-6">
+          <p className="text-green-400 text-xs font-semibold uppercase tracking-widest mb-1">Active Plan</p>
+          <h1 className="text-white font-bold text-xl mb-5">{plan.name}</h1>
+
+          {/* Macro targets row */}
+          <div className="grid grid-cols-4 gap-3">
             {[
-              { label: 'Calories', val: plan.daily_calories, unit: '' },
-              { label: 'Protein', val: plan.daily_protein, unit: 'g' },
-              { label: 'Carbs', val: plan.daily_carbs, unit: 'g' },
-              { label: 'Fat', val: plan.daily_fat, unit: 'g' },
-            ].map(({ label, val, unit }) => (
-              <div key={label} className="bg-white/20 rounded-xl p-2 text-center">
-                <p className="text-sm font-bold">{val}{unit}</p>
-                <p className="text-xs opacity-80">{label}</p>
+              { label: 'Calories', val: plan.daily_calories, unit: '', pct: calPct, color: '#f59e0b', icon: Flame },
+              { label: 'Protein', val: plan.daily_protein, unit: 'g', pct: proteinPct, color: '#22c55e', icon: Beef },
+              { label: 'Carbs', val: plan.daily_carbs, unit: 'g', pct: carbsPct, color: '#f97316', icon: Wheat },
+              { label: 'Fat', val: plan.daily_fat, unit: 'g', pct: fatPct, color: '#60a5fa', icon: Droplets },
+            ].map(({ label, val, unit, pct, color }) => (
+              <div key={label} className="bg-white/8 rounded-2xl p-3 text-center flex flex-col items-center gap-1">
+                <div className="relative flex items-center justify-center">
+                  <MacroRing pct={pct} color={color} size={48} />
+                  <span className="absolute text-[9px] font-bold text-white">{Math.round(pct)}%</span>
+                </div>
+                <p className="text-white font-bold text-sm leading-none">{val}{unit}</p>
+                <p className="text-green-300 text-[10px]">{label}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Day selector */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
-          {DAYS.map((d, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveDay(i + 1)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                activeDay === i + 1
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white text-gray-600 border border-gray-200'
-              }`}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-
-        {/* Day totals */}
-        {dayMeals.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-100 p-3 mb-4 grid grid-cols-4 gap-2 text-center text-xs">
-            <div><p className="font-bold text-gray-900">{totalCals}</p><p className="text-gray-400">kcal</p></div>
-            <div><p className="font-bold text-green-600">{totalProtein}g</p><p className="text-gray-400">protein</p></div>
-            <div><p className="font-bold text-amber-500">{totalCarbs}g</p><p className="text-gray-400">carbs</p></div>
-            <div><p className="font-bold text-blue-500">{totalFat}g</p><p className="text-gray-400">fat</p></div>
+        <div className="px-4 pt-5">
+          {/* Day selector */}
+          <div className="flex gap-2 overflow-x-auto pb-1 mb-5 scrollbar-hide">
+            {DAYS.map((d, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveDay(i + 1)}
+                className={`flex-shrink-0 flex flex-col items-center px-4 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                  activeDay === i + 1
+                    ? 'bg-green-600 text-white shadow-lg shadow-green-600/30'
+                    : 'bg-white text-gray-500 border border-gray-100 hover:border-green-200'
+                }`}
+              >
+                <span className="text-[10px] uppercase tracking-wider opacity-70 mb-0.5">Day</span>
+                <span>{i + 1}</span>
+                <span className="text-[9px] mt-0.5 opacity-70">{d}</span>
+              </button>
+            ))}
           </div>
-        )}
 
-        {/* Meals */}
-        <div className="space-y-3">
-          {dayMeals.length === 0 ? (
-            <p className="text-center text-gray-400 text-sm py-8">No meals for this day yet.</p>
-          ) : (
-            dayMeals.map(meal => (
-              <div key={meal.id} className="bg-white rounded-xl border border-gray-100 p-4">
-                <div className="flex items-start justify-between mb-1">
-                  <span className="text-xs font-semibold text-green-600 uppercase tracking-wide">{meal.meal_label}</span>
-                  <span className="text-xs text-gray-400">{meal.calories} kcal</span>
+          {/* Today's totals */}
+          {dayMeals.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4 animate-fadeIn">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Today's Totals</p>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div>
+                  <p className="font-bold text-gray-900 text-lg">{totalCals}</p>
+                  <p className="text-[10px] text-gray-400 font-medium">KCAL</p>
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-1">{meal.name}</h3>
-                <p className="text-sm text-gray-500 mb-3 leading-relaxed">{meal.description}</p>
-                <div className="flex gap-3 text-xs">
-                  <span className="text-green-600 font-medium">{meal.protein}g protein</span>
-                  <span className="text-amber-500 font-medium">{meal.carbs}g carbs</span>
-                  <span className="text-blue-500 font-medium">{meal.fat}g fat</span>
+                <div>
+                  <p className="font-bold text-green-600 text-lg">{totalProtein}g</p>
+                  <p className="text-[10px] text-gray-400 font-medium">PROTEIN</p>
+                </div>
+                <div>
+                  <p className="font-bold text-orange-500 text-lg">{totalCarbs}g</p>
+                  <p className="text-[10px] text-gray-400 font-medium">CARBS</p>
+                </div>
+                <div>
+                  <p className="font-bold text-blue-500 text-lg">{totalFat}g</p>
+                  <p className="text-[10px] text-gray-400 font-medium">FAT</p>
                 </div>
               </div>
-            ))
+            </div>
           )}
+
+          {/* Meals */}
+          <div className="space-y-3 animate-fadeIn">
+            {dayMeals.length === 0 ? (
+              <div className="bg-white rounded-2xl p-10 text-center text-gray-400 border border-gray-100">
+                No meals for this day yet.
+              </div>
+            ) : (
+              dayMeals.map((meal, idx) => (
+                <div key={meal.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+                    <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${MEAL_COLORS[meal.meal_label] || 'bg-gray-100 text-gray-600'}`}>
+                          {meal.meal_label}
+                        </span>
+                        <span className="text-xs text-gray-400 font-medium">{meal.calories} kcal</span>
+                      </div>
+                      <h3 className="font-bold text-gray-900 text-sm leading-tight">{meal.name}</h3>
+                    </div>
+                  </div>
+                  <div className="px-4 pb-3">
+                    <p className="text-sm text-gray-500 leading-relaxed mb-3">{meal.description}</p>
+                    <div className="flex gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-xs font-semibold text-gray-700">{meal.protein}g protein</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-orange-400" />
+                        <span className="text-xs font-semibold text-gray-700">{meal.carbs}g carbs</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-blue-400" />
+                        <span className="text-xs font-semibold text-gray-700">{meal.fat}g fat</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </main>
     </>
