@@ -59,14 +59,22 @@ export async function POST(req: NextRequest) {
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; NutriCoach/1.0)',
-        'Accept': 'text/html,application/xhtml+xml',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(12000),
     })
 
     if (!res.ok) {
-      return NextResponse.json({ error: `Could not fetch that page (${res.status}). Try a different recipe URL.` }, { status: 422 })
+      return NextResponse.json({ error: `Could not fetch that page (status ${res.status}). The site may be blocking imports.` }, { status: 422 })
+    }
+
+    const contentType = res.headers.get('content-type') || ''
+    if (!contentType.includes('html')) {
+      return NextResponse.json({ error: 'That URL does not point to a recipe page.' }, { status: 422 })
     }
 
     const html = await res.text()
@@ -82,9 +90,16 @@ export async function POST(req: NextRequest) {
       } catch { /* skip malformed blocks */ }
     }
 
+    // Detect Cloudflare challenge page
+    if (html.includes('cf-browser-verification') || html.includes('_cf_chl_opt') || html.includes('Enable JavaScript and cookies')) {
+      return NextResponse.json({
+        error: "This site (e.g. AllRecipes, Food Network) blocks automated access. Try a food blog URL instead — sites like therecipecritic.com, damndelicious.net, or pinchofyum.com work great."
+      }, { status: 422 })
+    }
+
     if (!recipe) {
       return NextResponse.json({
-        error: "This page doesn't have machine-readable recipe data. Try a site like AllRecipes, Food Network, or Serious Eats."
+        error: "No recipe data found on that page. Try a food blog or a site like BBC Good Food, Tasty, or Simply Recipes."
       }, { status: 422 })
     }
 
